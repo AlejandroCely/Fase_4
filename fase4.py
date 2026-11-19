@@ -23,6 +23,10 @@ class DatoInvalidoError(ErrorSistema):
     pass
 
 
+class ReservaError(ErrorSistema):
+    pass
+
+
 # Entidad es una clase general para los elementos del sistema.
 class Entidad(ABC):
 
@@ -113,7 +117,7 @@ class Servicio(Entidad):
 
     def calcular_total(self, duracion, impuesto=0, descuento=0, cantidad=1):
 
-    # Los valores opcionales permiten calcular con impuesto y descuento.
+# Los valores opcionales permiten calcular con impuesto y descuento.
         impuesto = float(impuesto)
         descuento = float(descuento)
         if not 0 <= impuesto <= 100 or not 0 <= descuento <= 100:
@@ -193,6 +197,114 @@ class Asesoria(Servicio):
 
     def mostrar_datos(self):
         return self.codigo + " - Asesoria: " + self.nombre
+
+
+# Reserva une un cliente con un servicio y guarda el estado de la solicitud.
+class Reserva(Entidad):
+
+# Al crear una reserva se reciben el cliente, el servicio y sus datos.
+    def __init__(self, codigo, cliente, servicio, duracion, datos):
+
+# Se revisa el codigo de la reserva en la clase Entidad.
+        super().__init__(codigo)
+
+        try:
+# Se confirma que el cliente exista como objeto de la clase Cliente.
+            if not isinstance(cliente, Cliente):
+                raise DatoInvalidoError("La reserva necesita un cliente valido.")
+
+# Se confirma que el servicio sea uno de los servicios del programa.
+            if not isinstance(servicio, Servicio):
+                raise DatoInvalidoError("La reserva necesita un servicio valido.")
+
+# Los datos adicionales deben estar organizados en un diccionario.
+            if not isinstance(datos, dict):
+                raise DatoInvalidoError("Los datos de la reserva deben estar en un diccionario.")
+
+# La duracion se convierte a numero para poder hacer los calculos.
+            self.duracion = float(duracion)
+
+# El servicio revisa si puede atender esta reserva con esos datos.
+            servicio.validar(self.duracion, datos)
+
+# Si algun dato no sirve, se informa que no se pudo crear la reserva.
+        except (TypeError, ValueError, ErrorSistema) as error:
+            
+# Se indica el motivo que produjo el error.
+            raise ReservaError("No se pudo crear la reserva: " + str(error)) from error
+
+# Si las revisiones pasan, se guardan los datos de la reserva.
+        self.cliente = cliente
+        self.servicio = servicio
+        self.datos = datos
+
+# Toda reserva nueva empieza pendiente.
+        self.estado = "Pendiente"
+
+# Se guarda en el registro que la reserva fue creada.
+        logging.info("Reserva creada: %s", self.codigo)
+
+# Este metodo confirma una reserva que se encuentra pendiente.
+    def confirmar(self):
+        
+# Solo se puede confirmar si todavia esta pendiente.
+        if self.estado != "Pendiente":
+            raise ReservaError("Solo se puede confirmar una reserva pendiente.")
+
+# Antes de confirmar, se revisa otra vez que el servicio pueda atenderla.
+        self.servicio.validar(self.duracion, self.datos)
+
+# Si todo esta correcto, cambia el estado de la reserva.
+        self.estado = "Confirmada"
+        logging.info("Reserva confirmada: %s", self.codigo)
+
+# Este metodo cancela una reserva que todavia se puede cancelar.
+    def cancelar(self):
+        
+# Una reserva procesada o ya cancelada no se puede cancelar otra vez.
+        if self.estado == "Procesada" or self.estado == "Cancelada":
+            raise ReservaError("Esta reserva no se puede cancelar.")
+
+# Si se puede cancelar, se actualiza su estado.
+        self.estado = "Cancelada"
+        logging.info("Reserva cancelada: %s", self.codigo)
+
+# Este metodo calcula el total y deja la reserva como procesada.
+    def procesar(self, impuesto=0, descuento=0):
+        try:
+
+# Para procesar una reserva, primero debe estar confirmada.
+            if self.estado != "Confirmada":
+                raise ReservaError("La reserva debe estar confirmada antes de procesarla.")
+
+# Se vuelve a revisar que el servicio este disponible.
+            self.servicio.validar(self.duracion, self.datos)
+
+# Si no se indica una cantidad, se toma como una unidad.
+            cantidad = int(self.datos.get("cantidad", 1))
+
+# Se calcula el precio con el impuesto y el descuento indicados.
+            total = self.servicio.calcular_total(self.duracion, impuesto, descuento, cantidad)
+
+# Si se alquilan equipos, se descuentan las unidades utilizadas.
+            if isinstance(self.servicio, Equipo):
+                self.servicio.disponibles -= cantidad
+
+# La reserva queda procesada despues de calcular el total.
+            self.estado = "Procesada"
+
+# Se registra el resultado y se devuelve el total calculado.
+            logging.info("Reserva procesada: %s. Total: %.2f", self.codigo, total)
+            return total
+
+# Si ocurre un error al revisar o calcular, se informa al usuario.
+        except (TypeError, ValueError, ErrorSistema) as error:
+            logging.exception("No se pudo procesar la reserva %s.", self.codigo)
+            raise ReservaError("No se pudo procesar la reserva: " + str(error)) from error
+
+# Este metodo organiza los datos principales para mostrarlos en pantalla.
+    def mostrar_datos(self):
+        return (self.codigo + " - " + self.cliente.get_nombre() + " - " + self.servicio.nombre + " - " + self.estado)
 
 
 # Esta funcion muestra como responden el cliente y los servicios ante diferentes datos.
@@ -275,6 +387,70 @@ def probar_cliente_y_servicios():
         print("Error controlado: " + str(error))
 
 
+# Esta funcion comprueba que se pueda crear, confirmar, cancelar y procesar una reserva.
+def probar_reservas():
+    cliente = Cliente("C03", "Maria Gomez", "45678901", "maria@email.com")
+    sala = Sala("S05", "Sala Sur", 40000, 15)
+    equipo = Equipo("S06", "Pantalla", 30000, 2)
+    asesoria = Asesoria("S07", "Asesoria de redes", 50000)
+
+# Se crea una reserva de sala y se revisa el cambio de estado hasta procesarla.
+    print("\nPrueba de reserva de sala:")
+    try:
+        reserva_sala = Reserva("R01", cliente, sala, 2, {"personas": 10})
+        print(reserva_sala.mostrar_datos())
+        reserva_sala.confirmar()
+        print(reserva_sala.mostrar_datos())
+        total = reserva_sala.procesar(19, 5)
+        print("Total de la reserva: $" + format(total, ",.0f"))
+        print(reserva_sala.mostrar_datos())
+    except ErrorSistema as error:
+        logging.exception("Fallo la prueba de reserva de sala.")
+        print("Error controlado: " + str(error))
+
+# Se comprueba que no se pueda crear una reserva con mas personas que la capacidad.
+    print("\nPrueba de reserva de sala con demasiadas personas:")
+    try:
+        Reserva("R02", cliente, sala, 2, {"personas": 20})
+    except ErrorSistema as error:
+        logging.exception("La reserva supera la capacidad de la sala.")
+        print("Error controlado: " + str(error))
+
+# La reserva de equipo descuenta las unidades cuando se procesa.
+    print("\nPrueba de reserva de equipo:")
+    try:
+        reserva_equipo = Reserva("R03", cliente, equipo, 2, {"cantidad": 2})
+        reserva_equipo.confirmar()
+        total = reserva_equipo.procesar()
+        print("Total de la reserva: $" + format(total, ",.0f"))
+        print("Equipos disponibles despues de la reserva: " + str(equipo.disponibles))
+    except ErrorSistema as error:
+        logging.exception("Fallo la prueba de reserva de equipo.")
+        print("Error controlado: " + str(error))
+
+# Se intenta cancelar una reserva pendiente y luego procesarla para revisar el control del estado.
+    print("\nPrueba de cancelacion de reserva:")
+    try:
+        reserva_asesoria = Reserva("R04", cliente, asesoria, 1, {"tema": "Seguridad"})
+        reserva_asesoria.cancelar()
+        print(reserva_asesoria.mostrar_datos())
+        reserva_asesoria.procesar()
+    except ErrorSistema as error:
+        logging.exception("Se intento procesar una reserva cancelada.")
+        print("Error controlado: " + str(error))
+
+# Se revisa que una asesoria no se pueda reservar sin indicar el tema.
+    print("\nPrueba de asesoria sin tema en la reserva:")
+    try:
+        Reserva("R05", cliente, asesoria, 1, {"tema": ""})
+    except ErrorSistema as error:
+        logging.exception("No se puede crear una reserva de asesoria sin tema.")
+        print("Error controlado: " + str(error))
+
+
 # Esta parte ejecuta las comprobaciones cuando se abre el archivo.
 if __name__ == "__main__":
     probar_cliente_y_servicios()
+    probar_reservas()
+
+
