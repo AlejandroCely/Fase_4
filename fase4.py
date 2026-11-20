@@ -1,6 +1,8 @@
 # John Alejandro Cely Roa
+# Codigo: 1022325325
 # Curso Programacion 213023
 # Fase 4 - Sistema de clientes y servicios
+
 
 # Se importan las herramientas que se utilizan en el programa.
 from abc import ABC, abstractmethod
@@ -10,7 +12,7 @@ import re
 
 
 # El archivo de eventos y errores se guarda junto a este programa.
-logging.basicConfig(filename=str(Path(__file__).with_name("software_fj.log")),level=logging.INFO,format="%(asctime)s - %(levelname)s - %(message)s",
+logging.basicConfig( filename=str(Path(__file__).with_name("software_fj.log")), level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s",
     encoding="utf-8")
 
 
@@ -40,7 +42,7 @@ class Entidad(ABC):
     def codigo(self):
         return self._codigo
 
-# Cada clase que hereda de Entidad define cómo mostrar sus datos.
+# Cada clase que hereda de Entidad define como mostrar sus datos.
     @abstractmethod
     def mostrar_datos(self):
         pass
@@ -102,8 +104,10 @@ class Servicio(Entidad):
         super().__init__(codigo)
         nombre = str(nombre).strip()
         tarifa = float(tarifa)
+
         if nombre == "" or tarifa <= 0:
             raise DatoInvalidoError("El servicio debe tener nombre y tarifa mayor que cero.")
+
         self.nombre = nombre
         self.tarifa = tarifa
 
@@ -120,8 +124,9 @@ class Servicio(Entidad):
 # Los valores opcionales permiten calcular con impuesto y descuento.
         impuesto = float(impuesto)
         descuento = float(descuento)
+
         if not 0 <= impuesto <= 100 or not 0 <= descuento <= 100:
-            raise DatoInvalidoError("Impuesto y descuento deben estar entre 0 y 100.")
+            raise DatoInvalidoError( "Impuesto y descuento deben estar entre 0 y 100.")
 
         costo = self.calcular_costo(duracion, cantidad)
         costo = costo * (1 - descuento / 100)
@@ -134,6 +139,7 @@ class Sala(Servicio):
     def __init__(self, codigo, nombre, tarifa_hora, capacidad):
         super().__init__(codigo, nombre, tarifa_hora)
         self.capacidad = int(capacidad)
+
         if self.capacidad <= 0:
             raise DatoInvalidoError("La capacidad debe ser mayor que cero.")
 
@@ -144,7 +150,8 @@ class Sala(Servicio):
             raise DatoInvalidoError("La cantidad de personas debe ser un numero.") from error
 
         if duracion <= 0 or duracion > 12:
-            raise DatoInvalidoError("La sala se puede reservar de 1 a 12 horas.")
+            raise DatoInvalidoError( "La sala se puede reservar de 1 a 12 horas.")
+
         if personas <= 0 or personas > self.capacidad:
             raise DatoInvalidoError("La cantidad de personas no es valida para esta sala.")
 
@@ -152,8 +159,7 @@ class Sala(Servicio):
         return self.tarifa * float(duracion)
 
     def mostrar_datos(self):
-        return self.codigo + " - Sala: " + self.nombre + " | Capacidad: " + str(self.capacidad)
-
+        return (self.codigo + " - Sala: " + self.nombre + " | Capacidad: " + str(self.capacidad))
 
 # El equipo se cobra por dia y por cada unidad solicitada.
 class Equipo(Servicio):
@@ -161,8 +167,9 @@ class Equipo(Servicio):
     def __init__(self, codigo, nombre, tarifa_dia, disponibles):
         super().__init__(codigo, nombre, tarifa_dia)
         self.disponibles = int(disponibles)
+
         if self.disponibles < 0:
-            raise DatoInvalidoError("Las unidades disponibles no pueden ser negativas.")
+            raise DatoInvalidoError( "Las unidades disponibles no pueden ser negativas.")
 
     def validar(self, duracion, datos):
         try:
@@ -172,32 +179,33 @@ class Equipo(Servicio):
 
         if duracion <= 0 or duracion > 30:
             raise DatoInvalidoError("El alquiler se puede hacer de 1 a 30 dias.")
+
         if cantidad <= 0 or cantidad > self.disponibles:
-            raise DatoInvalidoError("No hay suficientes equipos disponibles.")
+            raise DatoInvalidoError( "No hay suficientes equipos disponibles.")
 
     def calcular_costo(self, duracion, cantidad=1):
         return self.tarifa * float(duracion) * int(cantidad)
 
     def mostrar_datos(self):
-        return self.codigo + " - Equipo: " + self.nombre + " | Disponibles: " + str(self.disponibles)
-
+        return ( self.codigo + " - Equipo: " + self.nombre + " | Disponibles: " + str(self.disponibles))
 
 # La asesoria se cobra por hora y necesita un tema.
 class Asesoria(Servicio):
 
     def validar(self, duracion, datos):
         tema = str(datos.get("tema", "")).strip()
+
         if duracion <= 0 or duracion > 8:
-            raise DatoInvalidoError("La asesoria se puede reservar de 1 a 8 horas.")
+            raise DatoInvalidoError( "La asesoria se puede reservar de 1 a 8 horas." )
+
         if tema == "":
-            raise DatoInvalidoError("Debe escribir el tema de la asesoria.")
+            raise DatoInvalidoError( "Debe escribir el tema de la asesoria." )
 
     def calcular_costo(self, duracion, cantidad=1):
         return self.tarifa * float(duracion)
 
     def mostrar_datos(self):
         return self.codigo + " - Asesoria: " + self.nombre
-
 
 # Reserva une un cliente con un servicio y guarda el estado de la solicitud.
 class Reserva(Entidad):
@@ -209,17 +217,18 @@ class Reserva(Entidad):
         super().__init__(codigo)
 
         try:
+
 # Se confirma que el cliente exista como objeto de la clase Cliente.
             if not isinstance(cliente, Cliente):
-                raise DatoInvalidoError("La reserva necesita un cliente valido.")
+                raise DatoInvalidoError( "La reserva necesita un cliente valido." )
 
 # Se confirma que el servicio sea uno de los servicios del programa.
             if not isinstance(servicio, Servicio):
-                raise DatoInvalidoError("La reserva necesita un servicio valido.")
+                raise DatoInvalidoError( "La reserva necesita un servicio valido." )
 
 # Los datos adicionales deben estar organizados en un diccionario.
             if not isinstance(datos, dict):
-                raise DatoInvalidoError("Los datos de la reserva deben estar en un diccionario.")
+                raise DatoInvalidoError( "Los datos de la reserva deben estar en un diccionario." )
 
 # La duracion se convierte a numero para poder hacer los calculos.
             self.duracion = float(duracion)
@@ -229,9 +238,9 @@ class Reserva(Entidad):
 
 # Si algun dato no sirve, se informa que no se pudo crear la reserva.
         except (TypeError, ValueError, ErrorSistema) as error:
-            
+
 # Se indica el motivo que produjo el error.
-            raise ReservaError("No se pudo crear la reserva: " + str(error)) from error
+            raise ReservaError( "No se pudo crear la reserva: " + str(error)) from error
 
 # Si las revisiones pasan, se guardan los datos de la reserva.
         self.cliente = cliente
@@ -246,10 +255,10 @@ class Reserva(Entidad):
 
 # Este metodo confirma una reserva que se encuentra pendiente.
     def confirmar(self):
-        
+
 # Solo se puede confirmar si todavia esta pendiente.
         if self.estado != "Pendiente":
-            raise ReservaError("Solo se puede confirmar una reserva pendiente.")
+            raise ReservaError( "Solo se puede confirmar una reserva pendiente." )
 
 # Antes de confirmar, se revisa otra vez que el servicio pueda atenderla.
         self.servicio.validar(self.duracion, self.datos)
@@ -260,7 +269,7 @@ class Reserva(Entidad):
 
 # Este metodo cancela una reserva que todavia se puede cancelar.
     def cancelar(self):
-        
+
 # Una reserva procesada o ya cancelada no se puede cancelar otra vez.
         if self.estado == "Procesada" or self.estado == "Cancelada":
             raise ReservaError("Esta reserva no se puede cancelar.")
@@ -294,17 +303,77 @@ class Reserva(Entidad):
             self.estado = "Procesada"
 
 # Se registra el resultado y se devuelve el total calculado.
-            logging.info("Reserva procesada: %s. Total: %.2f", self.codigo, total)
+            logging.info("Reserva procesada: %s. Total: %.2f", self.codigo,total)
             return total
 
 # Si ocurre un error al revisar o calcular, se informa al usuario.
         except (TypeError, ValueError, ErrorSistema) as error:
-            logging.exception("No se pudo procesar la reserva %s.", self.codigo)
+            logging.exception("No se pudo procesar la reserva %s.",self.codigo)
             raise ReservaError("No se pudo procesar la reserva: " + str(error)) from error
 
 # Este metodo organiza los datos principales para mostrarlos en pantalla.
     def mostrar_datos(self):
-        return (self.codigo + " - " + self.cliente.get_nombre() + " - " + self.servicio.nombre + " - " + self.estado)
+        return ( self.codigo + " - " + self.cliente.get_nombre() + " - " + self.servicio.nombre + " - " + self.estado )
+
+
+# Esta clase guarda los clientes, servicios y reservas en listas internas.
+class SistemaGestion:
+
+    def __init__(self):
+        self.clientes = []
+        self.servicios = []
+        self.reservas = []
+
+# Este metodo agrega un cliente a la lista cuando es valido.
+    def agregar_cliente(self, cliente):
+        try:
+            if not isinstance(cliente, Cliente):
+                raise DatoInvalidoError("El dato no corresponde a un cliente.")
+        except ErrorSistema:
+            logging.exception("No se pudo guardar el cliente.")
+            raise
+        else:
+            self.clientes.append(cliente)
+            logging.info("Cliente guardado: %s", cliente.codigo)
+
+# Este metodo agrega un servicio a la lista cuando es valido.
+    def agregar_servicio(self, servicio):
+        try:
+            if not isinstance(servicio, Servicio):
+                raise DatoInvalidoError("El dato no corresponde a un servicio.")
+        except ErrorSistema:
+            logging.exception("No se pudo guardar el servicio.")
+            raise
+        else:
+            self.servicios.append(servicio)
+            logging.info("Servicio guardado: %s", servicio.codigo)
+
+# Este metodo crea la reserva y la guarda en la lista.
+    def crear_reserva(self, codigo, cliente, servicio, duracion, datos):
+        try:
+
+# El cliente y el servicio deben estar guardados en sus listas.
+            if cliente not in self.clientes:
+                raise DatoInvalidoError( "El cliente no esta guardado en el sistema." )
+
+            if servicio not in self.servicios:
+                raise DatoInvalidoError("El servicio no esta guardado en el sistema.")
+
+            reserva = Reserva(codigo, cliente, servicio, duracion, datos)
+
+        except (TypeError, ValueError, ErrorSistema) as error:
+            logging.exception("No se pudo guardar la reserva.")
+            raise ReservaError( "No se pudo guardar la reserva: " + str(error)) from error
+
+        else:
+# Si no hubo errores, la reserva queda guardada en la lista.
+            self.reservas.append(reserva)
+            logging.info("Reserva guardada: %s", reserva.codigo)
+            return reserva
+
+        finally:
+# Este evento queda guardado si la reserva se crea o si falla.
+            logging.info("Termino el intento de crear una reserva.")
 
 
 # Esta funcion muestra como responden el cliente y los servicios ante diferentes datos.
@@ -313,11 +382,12 @@ def probar_cliente_y_servicios():
 # Se intenta crear un cliente con datos que cumplen las validaciones.
     print("Prueba de cliente valido:")
     try:
-        cliente = Cliente("C01", "Ana Torres", "90778332", "ana@email.com")
+        cliente = Cliente( "C01", "Ana Torres","90778332", "ana@email.com" )
 
 # Se registra el evento y se muestran los datos del cliente creado.
         logging.info("Cliente creado: %s", cliente.codigo)
         print(cliente.mostrar_datos())
+
     except ErrorSistema as error:
 
 # Si un dato no es correcto, se guarda el error y se informa sin cerrar el programa.
@@ -340,21 +410,21 @@ def probar_cliente_y_servicios():
 
 # Se muestra la informacion de la sala y se prueba su costo de dos horas.
     print(sala.mostrar_datos())
-    print("Costo de sala por 2 horas: $" + format(sala.calcular_costo(2), ",.0f"))
+    print( "Costo de sala por 2 horas: $" + format(sala.calcular_costo(2), ",.0f") )
 
 # El segundo ejemplo agrega el impuesto y el tercero agrega impuesto y descuento.
-    print("Costo de sala con impuesto: $" + format(sala.calcular_total(2, 19), ",.0f"))
-    print("Costo de sala con impuesto y descuento: $" + format(sala.calcular_total(2, 19, 10), ",.0f"))
+    print( "Costo de sala con impuesto: $"+ format(sala.calcular_total(2, 19), ",.0f"))
+    print( "Costo de sala con impuesto y descuento: $"+ format(sala.calcular_total(2, 19, 10), ",.0f"))
 
 # El costo del equipo depende de los dias y de la cantidad solicitada.
     print(equipo.mostrar_datos())
-    print("Costo de 2 equipos por 2 dias: $" + format(equipo.calcular_costo(2, 2), ",.0f"))
+    print( "Costo de 2 equipos por 2 dias: $" + format(equipo.calcular_costo(2, 2), ",.0f") )
 
 # La asesoria se cobra por hora.
     print(asesoria.mostrar_datos())
-    print("Costo de asesoria por 1 hora: $" + format(asesoria.calcular_costo(1), ",.0f"))
+    print("Costo de asesoria por 1 hora: $"+ format(asesoria.calcular_costo(1), ",.0f"))
 
- # Se intenta crear una sala con tarifa negativa para comprobar la validacion.
+# Se intenta crear una sala con tarifa negativa para comprobar la validacion.
     print("\nPrueba de servicio con tarifa incorrecta:")
     try:
         Sala("S04", "Sala invalida", -1000, 10)
@@ -386,10 +456,9 @@ def probar_cliente_y_servicios():
         logging.exception("La prueba de asesoria no tiene tema.")
         print("Error controlado: " + str(error))
 
-
 # Esta funcion comprueba que se pueda crear, confirmar, cancelar y procesar una reserva.
 def probar_reservas():
-    cliente = Cliente("C03", "Maria Gomez", "45678901", "maria@email.com")
+    cliente = Cliente("C03","Maria Gomez","45678901", "maria@email.com" )
     sala = Sala("S05", "Sala Sur", 40000, 15)
     equipo = Equipo("S06", "Pantalla", 30000, 2)
     asesoria = Asesoria("S07", "Asesoria de redes", 50000)
@@ -397,13 +466,16 @@ def probar_reservas():
 # Se crea una reserva de sala y se revisa el cambio de estado hasta procesarla.
     print("\nPrueba de reserva de sala:")
     try:
-        reserva_sala = Reserva("R01", cliente, sala, 2, {"personas": 10})
+        reserva_sala = Reserva( "R01", cliente,sala, 2, {"personas": 10} )
         print(reserva_sala.mostrar_datos())
+
         reserva_sala.confirmar()
         print(reserva_sala.mostrar_datos())
+
         total = reserva_sala.procesar(19, 5)
         print("Total de la reserva: $" + format(total, ",.0f"))
         print(reserva_sala.mostrar_datos())
+
     except ErrorSistema as error:
         logging.exception("Fallo la prueba de reserva de sala.")
         print("Error controlado: " + str(error))
@@ -422,19 +494,30 @@ def probar_reservas():
         reserva_equipo = Reserva("R03", cliente, equipo, 2, {"cantidad": 2})
         reserva_equipo.confirmar()
         total = reserva_equipo.procesar()
+
         print("Total de la reserva: $" + format(total, ",.0f"))
-        print("Equipos disponibles despues de la reserva: " + str(equipo.disponibles))
+        print( "Equipos disponibles despues de la reserva: " + str(equipo.disponibles))
+
     except ErrorSistema as error:
         logging.exception("Fallo la prueba de reserva de equipo.")
+        print("Error controlado: " + str(error))
+
+# Despues de usar las unidades, se comprueba que no se puedan reservar mas.
+    print("\nPrueba de equipo sin unidades disponibles:")
+    try:
+        Reserva("R06", cliente, equipo, 1, {"cantidad": 1})
+    except ErrorSistema as error:
+        logging.exception("No hay equipos disponibles para esta reserva.")
         print("Error controlado: " + str(error))
 
 # Se intenta cancelar una reserva pendiente y luego procesarla para revisar el control del estado.
     print("\nPrueba de cancelacion de reserva:")
     try:
-        reserva_asesoria = Reserva("R04", cliente, asesoria, 1, {"tema": "Seguridad"})
+        reserva_asesoria = Reserva( "R04", cliente, asesoria, 1, {"tema": "Seguridad"} )
         reserva_asesoria.cancelar()
         print(reserva_asesoria.mostrar_datos())
         reserva_asesoria.procesar()
+
     except ErrorSistema as error:
         logging.exception("Se intento procesar una reserva cancelada.")
         print("Error controlado: " + str(error))
@@ -444,13 +527,64 @@ def probar_reservas():
     try:
         Reserva("R05", cliente, asesoria, 1, {"tema": ""})
     except ErrorSistema as error:
-        logging.exception("No se puede crear una reserva de asesoria sin tema.")
+        logging.exception( "No se puede crear una reserva de asesoria sin tema.")
         print("Error controlado: " + str(error))
 
 
-# Esta parte ejecuta las comprobaciones cuando se abre el archivo.
-if __name__ == "__main__":
+# Esta funcion comprueba que el sistema guarde los datos en sus listas.
+def probar_listas_internas():
+    print("\nPrueba de listas internas:")
+    sistema = SistemaGestion()
+
+    cliente = Cliente("C10", "Carlos Ruiz", "12345678", "carlos@email.com")
+    sala = Sala("S10", "Sala Central", 40000, 15)
+    equipo = Equipo("S11", "Camara", 25000, 2)
+    asesoria = Asesoria("S12", "Asesoria basica", 50000)
+
+    try:
+# Se agregan el cliente y los tres servicios a sus listas.
+        sistema.agregar_cliente(cliente)
+        sistema.agregar_servicio(sala)
+        sistema.agregar_servicio(equipo)
+        sistema.agregar_servicio(asesoria)
+
+# Se crea una reserva para revisar que tambien quede guardada.
+        reserva = sistema.crear_reserva("R10", cliente, sala, 2, {"personas": 8})
+        reserva.confirmar()
+        total = reserva.procesar()
+
+        print(reserva.mostrar_datos())
+        print("Total de la reserva: $" + format(total, ",.0f"))
+
+    except ErrorSistema as error:
+        logging.exception("Fallo la prueba de las listas internas.")
+        print("Error controlado: " + str(error))
+
+# Se intenta crear una reserva que supera la capacidad de la sala.
+    print("Prueba de error al guardar una reserva en las listas:")
+    try:
+        sistema.crear_reserva( "R11", cliente, sala, 2, {"personas": 20})
+    except ErrorSistema as error:
+        print("Error controlado: " + str(error))
+
+# Se muestra la cantidad de datos guardados en cada lista.
+    print("Clientes guardados: " + str(len(sistema.clientes)))
+    print("Servicios guardados: " + str(len(sistema.servicios)))
+    print("Reservas guardadas: " + str(len(sistema.reservas)))
+
+
+# Esta funcion ejecuta las pruebas del cliente, los servicios y las reservas.
+def ejecutar_pruebas():
+    print("Inicio de las pruebas del programa.")
+
     probar_cliente_y_servicios()
     probar_reservas()
+    probar_listas_internas()
+
+    print("\nTodas las pruebas terminaron.")
+    logging.info("Terminaron las pruebas del programa.")
 
 
+# Esta parte inicia las pruebas cuando se ejecuta el archivo.
+if __name__ == "__main__":
+    ejecutar_pruebas()
